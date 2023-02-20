@@ -1,0 +1,33 @@
+schemaVersion: "2.2"
+description: "Install yq binary from S3 and perform CRUD operations on Splunk OpenTelemetry Collector agent_config.yaml file"
+mainSteps:
+  - action: aws:runShellScript
+    name: "Download yq binary from S3"
+    inputs:
+      runCommand:
+        - "aws s3 cp s3://<S3_BUCKET_NAME>/yq /usr/local/bin/yq"
+        - "chmod +x /usr/local/bin/yq"
+  - action: aws:runShellScript
+    name: "Add Prometheus Oracle scrape config as receiver"
+    inputs:
+      runCommand:
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/protocols \"[ 'http' ]\""
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs '[ { job_name: \"oracle\", scrape_interval: 15s, scrape_timeout: 10s, static_configs: [ { targets: [ \"localhost:9187\" ] } ] } ]'"
+        - "yq w -i /etc/otel/collector/agent_config.yaml service/metrics/receiver_name \"prometheus\""
+  - action: aws:runShellScript
+    name: "Modify Prometheus Oracle scrape config as receiver"
+    inputs:
+      runCommand:
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].scrape_interval 30s"
+        - "yq w -i /etc/otel/collector/agent_config.yaml service/metrics/receiver_name \"new_receiver_name\""
+  - action: aws:runShellScript
+    name: "Delete Prometheus Oracle scrape config as receiver"
+    inputs:
+      runCommand:
+        - "yq d -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0]"
+        - "yq d -i /etc/otel/collector/agent_config.yaml service/metrics/receiver_name"
+  - action: aws:runShellScript
+    name: "Uninstall yq"
+    inputs:
+      runCommand:
+        - "rm /usr/local/bin/yq"

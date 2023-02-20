@@ -1,0 +1,58 @@
+schemaVersion: "2.2"
+description: "Install yq binary from S3 and perform CRUD operations on Splunk OpenTelemetry Collector agent_config.yaml file"
+mainSteps:
+  - action: aws:runShellScript
+    name: "Download yq binary from S3"
+    inputs:
+      runCommand:
+        - "aws s3 cp s3://<S3_BUCKET_NAME>/yq /usr/local/bin/yq"
+        - "chmod +x /usr/local/bin/yq"
+  - action: aws:runShellScript
+    name: "Add Prometheus Oracle scrape config as receiver"
+    inputs:
+      runCommand:
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/protocols \"[ 'http' ]\""
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs '[ { job_name: \"oracle\", scrape_interval: 15s, scrape_timeout: 10s, static_configs: [ { targets: [ \"localhost:9187\" ] } ] } ]'"
+        - "yq w -i /etc/otel/collector/agent_config.yaml service/metrics/receiver_name \"prometheus\""
+  - action: aws:runShellScript
+    name: "Add dimensions to Prometheus Oracle scrape config"
+    inputs:
+      runCommand:
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions \"{ environment: production, instance_id: i-1234567890abcdef0 }\""
+  - action: aws:runShellScript
+    name: "Modify dimensions of Prometheus Oracle scrape config"
+    inputs:
+      runCommand:
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions.environment \"staging\""
+        - "yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions.instance_id \"i-0987654321fedcba0\""
+  - action: aws:runShellScript
+    name: "Delete dimensions from Prometheus Oracle scrape config"
+    inputs:
+      runCommand:
+        - "yq d -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions"
+  - action: aws:runShellScript
+    name: "Add resource dimensions"
+    inputs:
+      runCommand:
+        - "yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[0].key \"host\""
+        - "yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[0].value \"${host.name}\""
+        - "yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[1].key \"env\""
+        - "yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[1].value \"prod\""
+  - action: aws:runShellScript
+    name: "Modify resource dimensions"
+    inputs:
+      runCommand:
+        - "yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[0].value \"${host.hostname}\""
+        - "yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[1].value \"dev\""
+  - action: aws:runShellScript
+    name: "Delete resource dimensions"
+    inputs:
+      runCommand:
+        - "yq d -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes"
+  - action: aws:runShellScript
+    name: "Uninstall yq"
+    inputs:
+      runCommand:
+        - "rm /usr/local/bin/yq"
+
+
