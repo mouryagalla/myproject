@@ -1,0 +1,35 @@
+---
+- name: Install yq and perform config removal
+  hosts: all
+  become: true
+  vars:
+    prometheus_config_path: /etc/prometheus/prometheus.yml
+    scrape_job_name: myapp
+  tasks:
+    - name: Install yq
+      apt:
+        name: yq
+        state: present
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Install yq
+      yum:
+        name: yq
+        state: present
+      when: ansible_distribution == 'CentOS'
+
+    - name: Remove Prometheus scrape config
+      shell: yq -i 'del(.scrape_configs[] | select(.job == "{{ scrape_job_name }}"))' {{ prometheus_config_path }}
+      when: ansible_pkg_mgr == 'apt' or ansible_pkg_mgr == 'yum'
+
+    - name: Uninstall yq
+      apt:
+        name: yq
+        state: absent
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Uninstall yq
+      yum:
+        name: yq
+        state: absent
+      when: ansible_distribution == 'CentOS'

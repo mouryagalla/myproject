@@ -1,0 +1,39 @@
+---
+- name: Add, edit or delete configurations in the Splunk OpenTelemetry Collector agent_config.yaml
+  hosts: all
+  become: true
+  vars:
+    agent_config_path: /etc/otel/collector/agent_config.yaml
+  tasks:
+    - name: Add or edit a configuration using yq
+      yq:
+        path: "{{ agent_config_path }}"
+        write: true
+        backup: true
+        yamlarg: "true"
+        key: "processors.batch.timeout"
+        value: "10s"
+
+    - name: Delete a configuration using yq
+      yq:
+        path: "{{ agent_config_path }}"
+        write: true
+        backup: true
+        yamlarg: "true"
+        key: "receivers.otlp.protocols.http.endpoint"
+
+    - name: Add a configuration using yq with a path expression
+      yq:
+        path: "{{ agent_config_path }}"
+        write: true
+        backup: true
+        yamlarg: "true"
+        expression: '.extensions."health_check" = {"endpoint": "http://localhost:13133/healthz"}'
+
+    - name: Add a configuration using yq with an array
+      yq:
+        path: "{{ agent_config_path }}"
+        write: true
+        backup: true
+        yamlarg: "true"
+        expression: '.processors += [{"batch": {"timeout": "10s"}, "memory_limiter": {"limit_mib": 1024}}]'

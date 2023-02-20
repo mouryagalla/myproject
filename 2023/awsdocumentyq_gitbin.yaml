@@ -1,0 +1,23 @@
+---
+- name: Install yq and perform config removal
+  hosts: all
+  become: true
+  vars:
+    prometheus_config_path: /etc/prometheus/prometheus.yml
+    scrape_job_name: myapp
+    yq_version: 4.12.2
+    yq_binary_url: "https://github.com/mikefarah/yq/releases/download/v{{ yq_version }}/yq_linux_amd64"
+  tasks:
+    - name: Download yq binary
+      get_url:
+        url: "{{ yq_binary_url }}"
+        dest: "/usr/local/bin/yq"
+        mode: "0755"
+
+    - name: Remove Prometheus scrape config
+      shell: yq -i 'del(.scrape_configs[] | select(.job == "{{ scrape_job_name }}"))' {{ prometheus_config_path }}
+
+    - name: Remove yq binary
+      file:
+        path: "/usr/local/bin/yq"
+        state: absent
