@@ -1,0 +1,24 @@
+---
+- name: Install yq and perform config removal
+  hosts: all
+  become: true
+  vars:
+    prometheus_config_path: /etc/prometheus/prometheus.yml
+    scrape_job_name: myapp
+    yq_s3_bucket: your-s3-bucket
+    yq_s3_key: yq_linux_amd64
+  tasks:
+    - name: Download yq binary from S3
+      aws_s3:
+        bucket: "{{ yq_s3_bucket }}"
+        object: "{{ yq_s3_key }}"
+        dest: "/usr/local/bin/yq"
+        mode: "0755"
+
+    - name: Remove Prometheus scrape config
+      shell: yq -i 'del(.scrape_configs[] | select(.job == "{{ scrape_job_name }}"))' {{ prometheus_config_path }}
+
+    - name: Remove yq binary
+      file:
+        path: "/usr/local/bin/yq"
+        state: absent

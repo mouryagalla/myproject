@@ -1,0 +1,15 @@
+schemaVersion: "2.2"
+description: "Perform CRUD operations on Splunk OpenTelemetry Collector agent_config.yaml file"
+mainSteps:
+  - action: aws:runShellScript
+    name: "Download yq binary from S3"
+    inputs:
+      runCommand:
+        - "aws s3 cp s3://<S3_BUCKET_NAME>/yq /usr/local/bin/yq"
+        - "chmod +x /usr/local/bin/yq"
+  - action: aws:runShellScript
+    name: "Execute commands from file stored in S3"
+    inputs:
+      runCommand:
+        - "aws s3 cp s3://<S3_BUCKET_NAME>/commands.txt /tmp/commands.txt"
+        - "cat /tmp/commands.txt | xargs -I {} sh -c '{}'"

@@ -1,0 +1,20 @@
+aws s3 cp s3://<S3_BUCKET_NAME>/yq /usr/local/bin/yq
+chmod +x /usr/local/bin/yq
+yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/protocols "[ 'http' ]"
+yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs '[ { job_name: "oracle", scrape_interval: 15s, scrape_timeout: 10s, static_configs: [ { targets: [ "localhost:9187" ] } ] } ]'
+yq w -i /etc/otel/collector/agent_config.yaml service/metrics/receiver_name "prometheus"
+yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions "{ environment: production, instance_id: i-1234567890abcdef0 }"
+yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions.environment "staging"
+yq w -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions.instance_id "i-0987654321fedcba0"
+yq d -i /etc/otel/collector/agent_config.yaml receivers.prometheus/configs.[0].dimensions
+yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[0].key "host"
+yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[0].value "${host.name}"
+yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[1].key "env"
+yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[1].value "prod"
+yq w -i /etc/otel/collector/agent_config.yaml processors.resource.add_dimensions.attributes.[0].value "${host.hostname}"
+yq eval -i 'del(.connections[].queries)' oracle.yaml
+yq e '.connections[].queries' agent_config.yaml
+
+
+yq eval '.extensions += [{"file_storage/checkpoint": {"directory": "/var/log/", "timeout": "1s", "compaction": {"on_start": true, "directory": "/var/slow", "mx_ts_s": 653}}}]' -i agent_config.yaml
+
